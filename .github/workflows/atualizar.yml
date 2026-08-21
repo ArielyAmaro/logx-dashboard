@@ -2,8 +2,8 @@ name: Atualizar Dashboard LOGX
 
 on:
   push:
-    paths:
-      - 'Relatorio_IAN.csv'
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
