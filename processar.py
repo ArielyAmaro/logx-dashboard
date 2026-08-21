@@ -78,4 +78,14 @@ with open(JS, 'r', encoding='utf-8') as f:
     js_novo = f.read()
 
 start = template.find('<script>')
-end   =
+end   = template.find('</script>') + len('</script>')
+html  = template[:start] + '<script>\n' + js_novo + '\n</script>' + template[end:]
+html_final = html.replace('__JSON__', j)
+
+with open(OUT, 'w', encoding='utf-8') as f:
+    f.write(html_final)
+
+t25 = sum(r['teus'] for r in records if r['ano']==2025 and r['situacao']!='Cancelado' and r['fcl']=='FCL')
+t26 = sum(r['teus'] for r in records if r['ano']==2026 and r['situacao']!='Cancelado' and r['fcl']=='FCL')
+print(f"TEUs 2025: {t25:.0f} | 2026: {t26:.0f}")
+print(f"Salvo: {OUT} ({len(html_final)//1024} KB)")
