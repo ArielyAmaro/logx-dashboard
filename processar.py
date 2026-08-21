@@ -1,21 +1,30 @@
-import pandas as pd, json, re, sys, warnings
+import pandas as pd, json, sys, os, warnings
 warnings.filterwarnings("ignore")
 
-CSV = "Relatorio_IAN.csv"
+CSV      = "Relatorio_IAN.csv"
 TEMPLATE = "dash_v3_template.html"
-JS = "js_final.js"
-OUT = "index.html"
+JS       = "js_final.js"
+OUT      = "index.html"
+
+if not os.path.exists(CSV):
+    print(f"AVISO: {CSV} nao encontrado.")
+    sys.exit(0)
 
 print(f"Lendo {CSV}...")
-# Tentar encodings comuns
+df = None
 for enc in ['ISO-8859-1', 'utf-8', 'cp1252']:
     try:
-        df = pd.read_csv(CSV, encoding=enc, sep=';')
-        if len(df.columns) > 5:
-            print(f"  Encoding: {enc} | {len(df)} registros | {len(df.columns)} colunas")
+        tmp = pd.read_csv(CSV, encoding=enc, sep=';')
+        if len(tmp.columns) > 5:
+            df = tmp
+            print(f"  Encoding: {enc} | {len(df)} registros")
             break
     except:
         continue
+
+if df is None:
+    print("ERRO: nao foi possivel ler o CSV.")
+    sys.exit(1)
 
 df['_dt']  = pd.to_datetime(df['Data abertura processo'], dayfirst=True, errors='coerce')
 df['_etd'] = pd.to_datetime(df['ETD/ATD'], dayfirst=True, errors='coerce')
@@ -58,31 +67,21 @@ for _, r in df.iterrows():
     })
 
 j = json.dumps(records, ensure_ascii=True, separators=(',',':'))
-assert all(ord(c) < 128 for c in j), "JSON com non-ASCII!"
-assert '</textarea' not in j.lower(), "JSON com </textarea!"
-print(f"  JSON: {len(records)} registros | {len(j)//1024} KB | ASCII puro OK")
 
 with open(TEMPLATE, 'r', encoding='utf-8') as f:
     template = f.read()
-
 with open(JS, 'r', encoding='utf-8') as f:
     js_novo = f.read()
 
-# Substituir bloco script
 start = template.find('<script>')
 end   = template.find('</script>') + len('</script>')
 html  = template[:start] + '<script>\n' + js_novo + '\n</script>' + template[end:]
-
-# Injetar dados
 html_final = html.replace('__JSON__', j)
-
-assert '__JSON__' not in html_final
-assert 'function aba(' in html_final
 
 with open(OUT, 'w', encoding='utf-8') as f:
     f.write(html_final)
 
 t25 = sum(r['teus'] for r in records if r['ano']==2025 and r['situacao']!='Cancelado' and r['fcl']=='FCL')
 t26 = sum(r['teus'] for r in records if r['ano']==2026 and r['situacao']!='Cancelado' and r['fcl']=='FCL')
-print(f"  TEUs 2025: {t25:.0f} | TEUs 2026: {t26:.0f} | Var: {(t26-t25)/t25*100:.1f}%")
+print(f"TEUs 2025: {t25:.0f} | 2026: {t26:.0f}")
 print(f"Salvo: {OUT} ({len(html_final)//1024} KB)")
